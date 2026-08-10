@@ -1,6 +1,6 @@
 {
 	// Python tests are unittest. Discovery starts in `tests`, with the top-level
-	// directory left at the repo root; `servery` itself is importable from the
+	// directory left at the repo root; `roost` itself is importable from the
 	// editable install in `.venv`, not from the source tree.
 	"python.testing.unittestEnabled": true,
 	"python.testing.pytestEnabled": false,

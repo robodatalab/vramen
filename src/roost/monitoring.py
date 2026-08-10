@@ -1,7 +1,7 @@
 from multiprocessing.queues import Queue
 import time
 
-from servery import log
+from roost import log
 from tqdm.auto import tqdm
 from transformers import PreTrainedTokenizerBase, TextStreamer
 

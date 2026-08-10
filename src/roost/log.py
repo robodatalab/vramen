@@ -9,7 +9,7 @@ from typing import Any
 FORMAT = "%(asctime)s %(process)6d %(name)-12s %(message)s"
 TIME_FORMAT = "%H:%M:%S"
 
-MARK = "_servery_handler"
+MARK = "_roost_handler"
 
 
 def setup() -> None:
@@ -31,6 +31,6 @@ def setup() -> None:
 
 
 def logger(name: str) -> logging.Logger:
-    """Short names: the format column is 12 wide, and `servery.resource_manager`
+    """Short names: the format column is 12 wide, and `roost.resource_manager`
     would run past it."""
     return logging.getLogger(name.rsplit(".", 1)[-1])

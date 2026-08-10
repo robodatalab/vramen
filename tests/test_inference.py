@@ -4,10 +4,10 @@ import time
 import unittest
 from unittest.mock import MagicMock, patch
 
-from servery import causal, resource_manager
-from servery.resource_manager import InferenceModelResourceManager
-from servery.causal import CausalModel
-from servery.utils import qwen_chat_prompt
+from roost import causal, resource_manager
+from roost.resource_manager import InferenceModelResourceManager
+from roost.causal import CausalModel
+from roost.utils import qwen_chat_prompt
 
 
 class ThreadQueue(queue.Queue):

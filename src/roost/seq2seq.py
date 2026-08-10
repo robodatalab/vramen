@@ -1,9 +1,9 @@
 from functools import partial
 import time
 
-from servery import log
-from servery.types import Model, PromptFormatter, Tokenizer
-from servery.resource_manager import (
+from roost import log
+from roost.types import Model, PromptFormatter, Tokenizer
+from roost.resource_manager import (
     InferenceModelResourceManager, 
     ModelKind, 
     ModelNotAvailable

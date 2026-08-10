@@ -11,8 +11,8 @@ import time
 from contextlib import contextmanager
 from typing import Any, Generator
 
-from servery import log
-from servery.utils import (
+from roost import log
+from roost.utils import (
     gpu_memory_limit,
     gpu_memory_used,
     gpu_tensors,
