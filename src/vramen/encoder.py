@@ -2,9 +2,9 @@ from collections.abc import Sequence
 from functools import partial
 import time
 
-from roost import log
-from roost.types import Model, Tokenizer
-from roost.resource_manager import (
+from vramen import log
+from vramen.types import Model, Tokenizer
+from vramen.resource_manager import (
     InferenceModelResourceManager,
     ModelKind,
     ModelNotAvailable

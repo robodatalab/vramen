@@ -11,8 +11,8 @@ import time
 from contextlib import contextmanager
 from typing import Any, Generator
 
-from roost import log
-from roost.utils import (
+from vramen import log
+from vramen.utils import (
     gpu_memory_limit,
     gpu_memory_used,
     gpu_tensors,

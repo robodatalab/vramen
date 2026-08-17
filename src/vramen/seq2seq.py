@@ -1,21 +1,20 @@
 from functools import partial
 import time
 
-from roost import log
-from roost.types import Model, PromptFormatter, Tokenizer
-from roost.monitoring import TextStreamerProgressMonitor
-from roost.resource_manager import (
+from vramen import log
+from vramen.types import Model, PromptFormatter, Tokenizer
+from vramen.resource_manager import (
     InferenceModelResourceManager, 
     ModelKind, 
     ModelNotAvailable
 )
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 _log = log.logger(__name__)
 
 
-class CausalModel(ModelKind):
+class Seq2SeqModel(ModelKind):
     def __init__(
             self,
             model_id: str,
@@ -27,7 +26,7 @@ class CausalModel(ModelKind):
         self.prompt = prompt
 
     def load(self) -> tuple[Model, Tokenizer]:
-        model = AutoModelForCausalLM.from_pretrained(
+        model = AutoModelForSeq2SeqLM.from_pretrained(
             self.model_id, dtype=torch.bfloat16, device_map="mps"
         )
         tokenizer = AutoTokenizer.from_pretrained(self.model_id)
@@ -36,7 +35,7 @@ class CausalModel(ModelKind):
 
     def complete(self, system: str, user: str, max_new_tokens: int) -> str:
         with self.manager.residency(self) as (requests, replies):
-            request = partial(_complete_instruct, self.prompt, system, user, max_new_tokens)
+            request = partial(_complete_seq2seq, self.prompt, system, user, max_new_tokens)
             requests.put(request)
             error, text = replies.get()
         if error is not None:
@@ -44,40 +43,26 @@ class CausalModel(ModelKind):
         return text
 
 
-def _complete_instruct(
+def _complete_seq2seq(
     prompt_formatter: PromptFormatter, 
     system: str, 
     user: str, 
-    max_new_tokens: int, 
+    max_new_tokens: int,
     model, 
-    tokenizer
+    tokenizer,
 ) -> str:
     prompt = prompt_formatter(system, user)
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-    prompt_tokens = int(inputs["input_ids"].shape[-1])
 
-    _log.info(
-        "generating: %d prompt tokens, up to %d new", prompt_tokens, max_new_tokens
-    )
     started = time.monotonic()
-
-    streamer = TextStreamerProgressMonitor(tokenizer, max_new_tokens)
     output = model.generate(
-        **inputs,
-        max_new_tokens=max_new_tokens,
-        do_sample=False,
-        streamer=streamer,
+        **inputs, max_new_tokens=max_new_tokens, do_sample=False
     )
-
-    generated = int(output[0].shape[-1]) - prompt_tokens
-    elapsed = time.monotonic() - started
     _log.info(
-        "generated %d tokens in %.1fs (%.1f tok/s)%s",
-        generated,
-        elapsed,
-        generated / elapsed if elapsed else 0.0,
-        " — hit the budget" if generated >= max_new_tokens else "",
+        "edited %d tokens in %.1fs",
+        int(output[0].shape[-1]),
+        time.monotonic() - started,
     )
 
-    text = tokenizer.decode(output[0][prompt_tokens:], skip_special_tokens=True)
+    text = tokenizer.decode(output[0], skip_special_tokens=True)
     return text if isinstance(text, str) else "".join(text)

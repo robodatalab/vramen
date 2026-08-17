@@ -6,9 +6,9 @@ from unittest.mock import MagicMock, patch
 import torch
 from transformers import BatchEncoding
 
-from roost import encoder, resource_manager
-from roost.encoder import EncoderModel
-from roost.resource_manager import InferenceModelResourceManager
+from vramen import encoder, resource_manager
+from vramen.encoder import EncoderModel
+from vramen.resource_manager import InferenceModelResourceManager
 
 
 class ThreadQueue(queue.Queue):

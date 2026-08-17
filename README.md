@@ -1,15 +1,15 @@
-# roost
+# vramen
 
 A local inference server that keeps several models resident side by side under a fixed memory quota.
 
-Roost is a library, not a daemon. You import it, declare a memory budget, and
+Vramen is a library, not a daemon. You import it, declare a memory budget, and
 name the models you want to call. It holds each one in its own process for as
 long as the budget allows, hands it to callers a lease at a time, and evicts the
 least recently used idle model when something else needs the room.
 
 ```python
-from roost import CausalModel, EncoderModel, InferenceModelResourceManager
-from roost import qwen_chat_prompt
+from vramen import CausalModel, EncoderModel, InferenceModelResourceManager
+from vramen import qwen_chat_prompt
 
 manager = InferenceModelResourceManager(quota_gb=24.0)
 
@@ -30,22 +30,22 @@ opens a port, or writes a config file.
 ## Install
 
 ```bash
-uv add roost
+uv add vramen
 ```
 
 ```bash
-pip install roost
+pip install vramen
 ```
 
 Requires Python 3.12 or newer. Pulls in `torch`, `transformers`, `accelerate`
 and `tqdm`. On macOS the `torch` wheel from PyPI is the one you want; on Linux
 with CUDA, install `torch` yourself from the index that matches your driver
-before adding roost, and see [Platforms](#platforms).
+before adding vramen, and see [Platforms](#platforms).
 
 To try it without adding it to a project:
 
 ```bash
-uv run --with roost python
+uv run --with vramen python
 ```
 
 ## What it does
@@ -83,7 +83,7 @@ API would give you.
   providers, that is LiteLLM or OpenRouter, and they compose with this fine.
 - **Not an inference engine.** No custom kernels, no paged attention, no
   continuous batching, no quantization. It calls `model.generate`. vLLM, SGLang,
-  llama.cpp and MLX are engines; roost is the thing that decides which of them
+  llama.cpp and MLX are engines; vramen is the thing that decides which of them
   gets to be in memory, and today it only drives `transformers`.
 - **Not an HTTP server.** No port, no OpenAI-compatible endpoint. If you need
   one, put your own FastAPI in front of it. It is called a server because it
@@ -96,7 +96,7 @@ API would give you.
 
 ## How it compares
 
-Almost everything in this space is a daemon you talk to over a socket. Roost is
+Almost everything in this space is a daemon you talk to over a socket. Vramen is
 the same idea shrunk to an import.
 
 | Project | What it is | How it differs |
@@ -107,11 +107,11 @@ the same idea shrunk to an import.
 | [LocalAI](https://localai.io/advanced/vram-management/) | OpenAI-compatible multi-backend server | Has VRAM management and idle unload across backends. A whole platform where this is a module. |
 | [mlx-serve](https://github.com/raspoli/mlx-serve) | Apple silicon MLX server | Hot-swaps MLX models with auto-unload on inactivity. MLX rather than torch, and over HTTP. |
 | [vLLM](https://docs.vllm.ai) / [TGI](https://huggingface.co/docs/text-generation-inference) | Throughput engines | One model per server instance, tuned for concurrent traffic. The opposite problem: many requests against one model, not many models against one machine. |
-| [Triton](https://github.com/triton-inference-server/server) | Model repository daemon | `EXPLICIT` model control mode makes load and unload your job through an API. Roost decides for you, from the budget. |
+| [Triton](https://github.com/triton-inference-server/server) | Model repository daemon | `EXPLICIT` model control mode makes load and unload your job through an API. Vramen decides for you, from the budget. |
 | [Ray Serve](https://docs.ray.io/en/latest/serve/model-multiplexing.html) | Distributed serving framework | `@serve.multiplexed` is the nearest relative: LRU eviction of models within a replica. Bounded by `max_num_models_per_replica`, a count again, and it wants a Ray cluster. |
 
 The recurring difference is the budget. These tools bound residency by how many
-models may be loaded, or by how long an idle one may linger. Roost bounds it by
+models may be loaded, or by how long an idle one may linger. Vramen bounds it by
 gigabytes, which is the thing that actually runs out, and it declines a model
 that cannot fit instead of discovering the problem during a load.
 
@@ -127,7 +127,7 @@ means serializing your data out and back for every call. An import does not.
 what you are willing to spend in total. Leave the machine some room.
 
 ```python
-from roost import machine_memory
+from vramen import machine_memory
 
 manager = InferenceModelResourceManager(quota_gb=machine_memory() * 0.6)
 ```
@@ -138,7 +138,7 @@ A model whose declaration exceeds the whole quota is refused immediately with
 ### Generating
 
 ```python
-from roost import CausalModel, ModelNotAvailable, qwen_chat_prompt
+from vramen import CausalModel, ModelNotAvailable, qwen_chat_prompt
 
 model = CausalModel("Qwen/Qwen3-8B", qwen_chat_prompt, manager, mem_required_gb=17.0)
 
@@ -156,7 +156,7 @@ of that shape works.
 ### Embedding
 
 ```python
-from roost import EncoderModel
+from vramen import EncoderModel
 
 encoder = EncoderModel("Qwen/Qwen3-Embedding-0.6B", manager, mem_required_gb=2.0)
 vectors = encoder.encode(["first passage", "second passage"])
@@ -168,7 +168,7 @@ of each row and normalized to unit length, so a dot product is a cosine.
 ### Editing
 
 ```python
-from roost import Seq2SeqModel, coedit_prompt
+from vramen import Seq2SeqModel, coedit_prompt
 
 editor = Seq2SeqModel("grammarly/coedit-large", coedit_prompt, manager, mem_required_gb=3.0)
 fixed = editor.complete("Fix grammar", "she dont know", max_new_tokens=64)
@@ -188,7 +188,7 @@ asking never queues behind a generation that runs for minutes.
 ### Logging
 
 ```python
-from roost import log
+from vramen import log
 
 log.setup()
 ```
@@ -202,7 +202,7 @@ Subclass `ModelKind` and implement `load`. Whatever you return is handed to the
 requests you send through `residency`.
 
 ```python
-from roost.resource_manager import ModelKind
+from vramen.resource_manager import ModelKind
 
 class VisionModel(ModelKind):
     def load(self):
@@ -224,20 +224,20 @@ else is portable: the process, queue and quota machinery is plain
 `ru_maxrss`. Off MPS the GPU figures report `0.0`, which does not affect
 admission, since the quota is spent in declarations rather than measurements.
 
-**Windows** does not work. `roost.utils` imports `resource`, which is POSIX
+**Windows** does not work. `vramen.utils` imports `resource`, which is POSIX
 only, so the package fails at import. WSL is the path there.
 
 ## Developing
 
 ```bash
-git clone https://github.com/robodatalab/roost
-cd roost
+git clone https://github.com/robodatalab/vramen
+cd vramen
 uv sync
 uv run python -m unittest discover -s tests -t . -v
 ```
 
-`uv sync` installs roost into `.venv` as an editable install, so `import roost`
-resolves to `src/roost`.
+`uv sync` installs vramen into `.venv` as an editable install, so `import vramen`
+resolves to `src/vramen`.
 
 ## Releasing
 
@@ -248,7 +248,7 @@ project's *Publishing* settings:
 | Field | Value |
 | --- | --- |
 | Owner | `robodatalab` |
-| Repository | `roost` |
+| Repository | `vramen` |
 | Workflow | `publish.yml` |
 | Environment | `pypi` |
 
