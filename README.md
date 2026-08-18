@@ -284,10 +284,10 @@ uv run python -m unittest discover -s tests -t . -v
 `uv sync` installs vramen into `.venv` as an editable install, so `import vramen`
 resolves to `src/vramen`.
 
-Those same two commands run in CI on every branch and pull request
-([`tests.yml`](.github/workflows/tests.yml)), across Python 3.12, 3.13 and 3.14
-on both macOS and Linux. Pushes to main are the one exception: the publish
-workflow runs the suite there as the gate in front of a release.
+Those same two commands run in CI on every pull request
+([`tests.yml`](.github/workflows/tests.yml)), on Python 3.12, the floor in
+`pyproject.toml`. Main is the one exception: the publish workflow runs the suite
+there as the gate in front of a release.
 
 ## Releasing
 
