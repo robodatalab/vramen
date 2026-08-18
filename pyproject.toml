@@ -1,6 +1,6 @@
 [project]
 name = "vramen"
-version = "0.2.1"
+version = "0.2.2"
 description = "A local inference server that keeps several models resident side by side under a fixed memory quota."
 readme = "README.md"
 requires-python = ">=3.12"
