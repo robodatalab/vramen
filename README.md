@@ -42,6 +42,11 @@ and `tqdm`. On macOS the `torch` wheel from PyPI is the one you want; on Linux
 with CUDA, install `torch` yourself from the index that matches your driver
 before adding vramen, and see [Platforms](#platforms).
 
+Drawing is an extra, `uv add 'vramen[image]'`, which adds `diffusers` and
+Pillow, and the `sentencepiece` and `protobuf` that the T5 encoders in these
+pipelines are still shipped as. Nothing else needs it, and without it the rest
+of the package works as it did.
+
 To try it without adding it to a project:
 
 ```bash
@@ -69,12 +74,15 @@ model under lease cannot be evicted, so a swap waits for the generation in
 flight rather than killing it. Idle models are the only eviction candidates, and
 they go oldest first.
 
-**Any `transformers` checkpoint.** Causal, encoder and seq2seq models sit under
-the same quota. `CausalModel.complete` generates, `EncoderModel.encode` returns
-unit length pooled vectors, `Seq2SeqModel.complete` runs an encoder-decoder edit.
-They are ordinary `AutoModel*` loads, so anything on the Hub that `transformers`
-can open works, including embedding models whose pooled hidden states no chat
-API would give you.
+**Any `transformers` checkpoint, and any `diffusers` pipeline.** Causal,
+encoder, seq2seq and text to image models sit under the same quota.
+`CausalModel.complete` generates, `EncoderModel.encode` returns unit length
+pooled vectors, `Seq2SeqModel.complete` runs an encoder-decoder edit, and
+`Text2ImageModel.draw` returns a PNG. The first three are ordinary `AutoModel*`
+loads and the fourth is a `DiffusionPipeline`, so anything on the Hub that
+either library can open works, including embedding models whose pooled hidden
+states no chat API would give you, and an 8.9B denoiser that no chat API has at
+all.
 
 ## What it is not
 
@@ -174,6 +182,40 @@ editor = Seq2SeqModel("grammarly/coedit-large", coedit_prompt, manager, mem_requ
 fixed = editor.complete("Fix grammar", "she dont know", max_new_tokens=64)
 ```
 
+### Drawing
+
+```python
+from vramen import Text2ImageModel
+
+painter = Text2ImageModel(
+    "lodestones/Chroma1-HD",
+    manager,
+    mem_required_gb=28.0,
+    negative_prompt="low quality, blurry, deformed",
+)
+png = painter.draw("a heron on a jetty at dawn", seed=433)
+open("heron.png", "wb").write(png)
+```
+
+The picture comes back as the bytes of a PNG rather than as a PIL image. The
+reply crosses a process boundary, and bytes are what a file, a socket and a
+browser all take as they stand. A seed draws the same picture again from the
+same prompt; without one every call draws something new. `draw` takes `width`,
+`height`, `steps` and `guidance` as well, and defaults to 1024 square in 40
+steps at guidance 3.0, which is what the Chroma card asks for.
+
+`model_index.json` names the pipeline a checkpoint wants, so Chroma, Flux and
+SDXL all load through this one class. Weights missing from the hub cache are
+downloaded on the first load, which for Chroma is some 28GB, and that happens
+inside the serving process, so whatever else is resident goes on answering
+while it runs.
+
+Pass `offload=True` to have `diffusers` keep one component on the accelerator at
+a time and the rest in RAM. On a discrete card that is the difference between
+fitting and not; on Apple silicon, where both are the same memory, it mostly
+costs time. `mem_required_gb` is your declaration either way — the quota is
+spent on what you say a model needs, not on what it turns out to hold.
+
 ### Watching it
 
 ```python
@@ -217,8 +259,11 @@ picklable. The manager reference is dropped on the way across.
 **macOS on Apple silicon** is what this is built for and tested on. Models load
 onto MPS, and the memory readings come from `torch.mps`.
 
-**Linux** is not supported out of the box today. The three model classes pass
-`device_map="mps"` to `from_pretrained`, so CUDA needs that changed. Everything
+**Linux** is not supported out of the box today. Three of the four model
+classes pass `device_map="mps"` to `from_pretrained` and `Text2ImageModel` calls
+`pipe.to("mps")`, so CUDA needs those changed — though a `Text2ImageModel` built
+with `offload=True` asks `diffusers` for the accelerator and lands on CUDA as it
+stands. Everything
 else is portable: the process, queue and quota machinery is plain
 `multiprocessing`, and `process_memory` already handles the Linux units for
 `ru_maxrss`. Off MPS the GPU figures report `0.0`, which does not affect
