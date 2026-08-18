@@ -1,0 +1,58 @@
+name: tests
+
+# Branches and pull requests. Pushes to main are left out on purpose: the
+# publish workflow runs the same suite there as the gate in front of a release,
+# and running it twice on the one branch that matters proves nothing extra.
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# A branch only needs an answer about its newest commit. Superseded runs are
+# cancelled rather than queued, which is the opposite of the publish workflow,
+# where a half-finished run leaves tags and the index disagreeing.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unittest:
+    name: ${{ matrix.os }} py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One failing combination should not hide the others: knowing whether a
+      # break is version-specific or platform-specific is most of the diagnosis.
+      fail-fast: false
+      matrix:
+        # macOS on arm64 is what the package is built for, Linux is what the
+        # release gate runs on. The versions are the ones pyproject.toml claims.
+        os: [macos-latest, ubuntu-latest]
+        python-version: ["3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+
+      # setup-uv publishes only full semver tags, no floating major.
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          # Pins the interpreter uv resolves and syncs against, rather than
+          # taking whatever the runner image happens to ship.
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          # uv.lock is gitignored, so pyproject.toml is the file that decides
+          # what gets resolved, and the cache key has to follow it. The default
+          # glob watches the lock file, which is never there.
+          cache-dependency-glob: pyproject.toml
+
+      # The same two commands the README gives for a checkout on a laptop.
+      # `uv sync` installs the project editable into .venv from pyproject.toml,
+      # with the dev group and without the image extra, which the suite does not
+      # need: diffusers is imported inside the load path the tests stub out.
+      - name: Install the dependencies
+        run: uv sync
+
+      - name: Run the tests
+        # --no-sync because the step above already did it; unittest discovers
+        # from tests/ with the repository root as the import root.
+        run: uv run --no-sync python -m unittest discover -s tests -t . -v
