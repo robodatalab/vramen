@@ -1,9 +1,20 @@
 name: publish
 
+# Every push to main releases. A merged pull request lands on main as a push,
+# so merges and direct pushes travel the same path and neither needs anyone to
+# remember a command afterwards.
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
   workflow_dispatch:
+
+# One release at a time. Two pushes landing together would otherwise race for
+# the same version number. The second queues rather than cancelling the first,
+# because a run abandoned half way through is exactly what leaves the tags and
+# the index disagreeing.
+concurrency:
+  group: publish
+  cancel-in-progress: false
 
 jobs:
   pypi:
@@ -14,16 +25,68 @@ jobs:
       # Lets the job mint the short-lived OIDC token PyPI exchanges for an
       # upload credential. No API token is stored anywhere.
       id-token: write
+      # The release commit, the tag, and the GitHub release.
+      contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The next version is counted from the tags, and checkout fetches
+          # none of them by default.
+          fetch-depth: 0
 
       # setup-uv publishes only full semver tags, no floating major.
       - uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
 
+      # A release cannot be taken back, so the suite runs before anything is
+      # written down rather than after. uv.lock is gitignored, so this resolves
+      # the dependencies rather than restoring them.
+      - name: Run the tests
+        run: uv run python -m unittest discover -s tests -t .
+
+      - name: Work out the version
+        id: version
+        run: python3 scripts/resolve_release.py --check-pypi
+
       - name: Build the sdist and the wheel
         run: uv build
 
+      # git before PyPI, deliberately. An upload that fails after this leaves a
+      # tag with no artifact, and the next push simply steps over that number.
+      # The other order leaves PyPI holding a version the repository has no
+      # record of, which is the one state that cannot be tidied up afterwards.
+      - name: Commit and tag the release
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          BUMPED: ${{ steps.version.outputs.bumped }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Nothing to commit when the version was raised by hand: that commit
+          # is already on main, and only the tag is still missing.
+          if [ "$BUMPED" = "true" ]; then
+            git add pyproject.toml
+            # Pushes made with GITHUB_TOKEN do not start another run. The
+            # marker says so a second time, for whoever swaps the token out.
+            git commit -m "Release v$VERSION [skip ci]"
+          fi
+
+          git tag "v$VERSION"
+          git push origin HEAD:main
+          git push origin "v$VERSION"
+
       - name: Publish to PyPI
-        run: uv publish --trusted-publishing always
+        # --check-url skips a file the index already holds instead of failing
+        # on it, so re-running a partly finished upload finishes it.
+        run: |
+          uv publish \
+            --trusted-publishing always \
+            --check-url https://pypi.org/simple/vramen/
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: gh release create "v$VERSION" --title "v$VERSION" --generate-notes

@@ -202,7 +202,7 @@ Subclass `ModelKind` and implement `load`. Whatever you return is handed to the
 requests you send through `residency`.
 
 ```python
-from vramen.resource_manager import ModelKind
+from vramen import ModelKind
 
 class VisionModel(ModelKind):
     def load(self):
@@ -252,18 +252,38 @@ project's *Publishing* settings:
 | Workflow | `publish.yml` |
 | Environment | `pypi` |
 
-After that, cutting a GitHub release runs
-[`.github/workflows/publish.yml`](.github/workflows/publish.yml), which builds
-the sdist and wheel with `uv build` and uploads them with `uv publish`. The job
+After that, releasing is automatic. Every push to main runs
+[`.github/workflows/publish.yml`](.github/workflows/publish.yml), which runs the
+tests, works out the version, commits and tags it, builds the sdist and wheel
+with `uv build` and uploads them with `uv publish`. A merged pull request lands
+on main as a push, so merges and direct pushes travel the same path. The job
 requests a short-lived OIDC token from GitHub, PyPI verifies the claims against
 the configuration above and mints a scoped upload credential for that run only.
 
-To release, bump `version` in `pyproject.toml`, commit, then tag and publish a
-release on GitHub. To check the artifacts first without uploading:
+Nothing has to be run by hand to cut a release, including the version:
+
+| You push | You get |
+| --- | --- |
+| anything to main | the next patch — `0.2.0` → `0.2.1` |
+| `version` in `pyproject.toml` raised to `0.3.0` | `0.3.0`, released as it stands |
+
+So a patch costs nothing to think about, and a minor or a major is a one-line
+edit made in the pull request that earns it. The next version is counted from
+the highest `v*` tag rather than from the file, so reverting a release commit
+cannot walk the version back into a number PyPI has already handed out.
+
+To see what the next push would release, or to check the artifacts without
+uploading:
 
 ```bash
+make next-version
 uv build
 ```
+
+`make publish-local` is the fallback for when GitHub is unavailable. It uploads
+from your machine with an API token, forfeiting trusted publishing and PEP 740
+attestations, and it ships without tagging — the next push to main asks the
+index and steps over whatever it already holds.
 
 ## License
 
