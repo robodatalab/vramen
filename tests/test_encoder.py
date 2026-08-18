@@ -6,8 +6,9 @@ from unittest.mock import MagicMock, patch
 import torch
 from transformers import BatchEncoding
 
-from vramen import encoder, resource_manager
-from vramen.encoder import EncoderModel
+from vramen import resource_manager
+from vramen.models import encoder
+from vramen.models.encoder import EncoderModel
 from vramen.resource_manager import InferenceModelResourceManager
 
 

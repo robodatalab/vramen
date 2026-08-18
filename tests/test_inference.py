@@ -4,9 +4,10 @@ import time
 import unittest
 from unittest.mock import MagicMock, patch
 
-from vramen import causal, resource_manager
+from vramen import resource_manager
+from vramen.models import causal
+from vramen.models.causal import CausalModel
 from vramen.resource_manager import InferenceModelResourceManager
-from vramen.causal import CausalModel
 from vramen.utils import qwen_chat_prompt
 
 
