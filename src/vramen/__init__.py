@@ -2,20 +2,27 @@
 
 Everything public is re-exported here, so `from vramen import CausalModel`
 reads the same to a type checker as it does at runtime. The submodules stay
-importable for the internals: `vramen.encoder.BATCH_SIZE` and the like.
+importable for the internals: `vramen.models.encoder.BATCH_SIZE` and the like.
 """
 
 from vramen import log
-from vramen.monitoring import TextStreamerProgressMonitor, reporting_tqdm
+from vramen.monitoring import (
+    DenoisingProgressMonitor,
+    TextStreamerProgressMonitor,
+    reporting_tqdm,
+)
 from vramen.resource_manager import (
     InferenceModelResourceManager,
     MemoryReading,
     ModelKind,
     ModelNotAvailable,
 )
-from vramen.causal import CausalModel
-from vramen.encoder import EncoderModel
-from vramen.seq2seq import Seq2SeqModel
+from vramen.models import (
+    CausalModel,
+    EncoderModel,
+    Seq2SeqModel,
+    Text2ImageModel,
+)
 from vramen.types import Model, PromptFormatter, Tokenizer
 from vramen.utils import (
     coedit_prompt,
@@ -37,6 +44,7 @@ __all__ = [
     "EncoderModel",
     "ModelKind",
     "Seq2SeqModel",
+    "Text2ImageModel",
     # Prompts
     "coedit_prompt",
     "qwen_chat_prompt",
@@ -51,6 +59,7 @@ __all__ = [
     "PromptFormatter",
     "Tokenizer",
     # Logging and progress
+    "DenoisingProgressMonitor",
     "TextStreamerProgressMonitor",
     "log",
     "reporting_tqdm",
