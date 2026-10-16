@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from multiprocessing.queues import Queue
 import time
 from typing import Any

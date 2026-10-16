@@ -3,7 +3,7 @@ name = "vramen"
 version = "0.2.2"
 description = "A local inference server that keeps several models resident side by side under a fixed memory quota."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "Piotr Trochim" }]
@@ -22,6 +22,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Operating System :: MacOS :: MacOS X",
     "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
