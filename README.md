@@ -37,7 +37,7 @@ uv add vramen
 pip install vramen
 ```
 
-Requires Python 3.12 or newer. Pulls in `torch`, `transformers`, `accelerate`
+Requires Python 3.11 or newer. Pulls in `torch`, `transformers`, `accelerate`
 and `tqdm`. On macOS the `torch` wheel from PyPI is the one you want; on Linux
 with CUDA, install `torch` yourself from the index that matches your driver
 before adding vramen, and see [Platforms](#platforms).
@@ -285,7 +285,7 @@ uv run python -m unittest discover -s tests -t . -v
 resolves to `src/vramen`.
 
 Those same two commands run in CI on every pull request
-([`tests.yml`](.github/workflows/tests.yml)), on Python 3.12, the floor in
+([`tests.yml`](.github/workflows/tests.yml)), on Python 3.11, the floor in
 `pyproject.toml`. Main is the one exception: the publish workflow runs the suite
 there as the gate in front of a release.
 

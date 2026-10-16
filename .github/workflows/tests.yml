@@ -32,7 +32,7 @@ jobs:
         with:
           # The floor in pyproject.toml, so what passes here passes on every
           # version the package claims to support.
-          python-version: "3.12"
+          python-version: "3.11"
           enable-cache: true
           # uv.lock is gitignored, so pyproject.toml is the file that decides
           # what gets resolved, and the cache key has to follow it. The default
